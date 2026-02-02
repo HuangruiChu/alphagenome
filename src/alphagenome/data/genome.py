@@ -749,6 +749,23 @@ class Variant:
     """Return if the variant is an insertion."""
     return len(self.reference_bases) < len(self.alternate_bases)
 
+  @property
+  def is_frameshift(self) -> bool:
+    """Return if the variant is a frameshift."""
+    indel_size = abs(len(self.reference_bases) - len(self.alternate_bases))
+    return indel_size > 0 and indel_size % 3 != 0
+
+  @property
+  def is_indel(self) -> bool:
+    """Return if the variant is an insertion or deletion."""
+    return self.is_insertion or self.is_deletion
+
+  @property
+  def is_structural(self) -> bool:
+    """Return if the variant is a structural variant."""
+    indel_size = abs(len(self.reference_bases) - len(self.alternate_bases))
+    return indel_size >= 50
+
   def copy(self) -> Self:
     """Returns a deep copy of the variant."""
     return copy.deepcopy(self)

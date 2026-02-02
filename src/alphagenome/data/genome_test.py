@@ -782,6 +782,38 @@ class VariantTest(parameterized.TestCase):
     self.assertEqual(v.is_insertion, expected)
 
   @parameterized.parameters(
+      ('A', 'C', False),
+      ('AC', 'A', True),
+      ('A', 'AC', True),
+      ('AC', 'GT', False),
+      ('', 'A', True),
+      ('A', '', True),
+  )
+  def test_is_indel(self, ref, alt, expected):
+    v = genome.Variant('chr1', 10, ref, alt)
+    self.assertEqual(v.is_indel, expected)
+
+  @parameterized.parameters(
+      ('A', 'C', False),
+      ('AC', 'GTA', True),
+      ('', 'AAA', False),
+      ('AAAA', 'C', False),
+      ('ACG', 'ACGTACGTN', False),
+  )
+  def test_is_frameshift(self, ref, alt, expected):
+    v = genome.Variant('chr1', 10, ref, alt)
+    self.assertEqual(v.is_frameshift, expected)
+
+  @parameterized.parameters(
+      ('', 'C' * 50, True),
+      ('A' * 51, 'C', True),
+      ('A', 'AC', False),
+  )
+  def test_is_structural(self, ref, alt, expected):
+    v = genome.Variant('chr1', 10, ref, alt)
+    self.assertEqual(v.is_structural, expected)
+
+  @parameterized.parameters(
       ('chr1:1:AAA>GGG', 'TTTNNNN', 'chr1:1:AAA>GGG'),
       ('chr1:1:ATCG>ATCC', 'ATCGNNN', 'chr1:4:G>C'),
       ('chr1:1:ATCG>ATC', 'ATCG', 'chr1:3:CG>C'),
