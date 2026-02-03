@@ -419,6 +419,8 @@ class OverlaidTracks(AbstractComponent):
       ylabel_horizontal: bool = True,
       shared_y_scale: bool = False,
       global_ylims: tuple[float, float] | None = None,
+      yticks: Sequence[float] | None = None,
+      yticklabels: Sequence[str] | None = None,
       alpha: float = 0.8,
       order_tdata_by_mean: bool = True,
       max_num_tracks: int = 50,
@@ -437,6 +439,12 @@ class OverlaidTracks(AbstractComponent):
       shared_y_scale: Whether to use the same y-axis scale for all tracks. This
         is inferred from the min/max data values across all tracks.
       global_ylims: Optional global y-axis limits (min and max).
+      yticks: Optional set y-axis tick values manually. If not provided, the
+        tick values will be automatically determined. If provided, the length of
+        yticks must match the length of yticklabels.
+      yticklabels: Optional set y-axis tick labels manually. If not provided,
+        the tick values will be automatically determined. If provided, the
+        length of yticklabels must match the length of yticks.
       alpha: The transparency of the tracks.
       order_tdata_by_mean: Whether to order the tracks by their mean value (in
         descending order).
@@ -461,11 +469,23 @@ class OverlaidTracks(AbstractComponent):
     self._ylabel_horizontal = ylabel_horizontal
     self._shared_y_scale = shared_y_scale
     self._global_ylims = global_ylims
+    self._yticks = yticks
+    self._yticklabels = yticklabels
     self._alpha = alpha
     self._order_tdata_by_mean = order_tdata_by_mean
     self._kwargs = kwargs
     self._first_tdata = list(tdata.values())[0]
     self._legend_loc = legend_loc
+
+    if (
+        self._yticks is not None
+        and self._yticklabels is not None
+        and len(self._yticks) != len(self._yticklabels)
+    ):
+      raise ValueError(
+          'If passing yticks and yticklabels, the length of yticks must match'
+          ' the length of yticklabels.'
+      )
 
     if len(set(data.values.shape for data in tdata.values())) != 1:
       raise ValueError('Shapes of track data values must be the same.')
@@ -591,6 +611,11 @@ class OverlaidTracks(AbstractComponent):
       )
       if axis_index == 0 and self._legend_loc is not None:
         ax.legend(self._tdata_ordered.keys(), loc=self._legend_loc)
+
+      if self._yticks is not None:
+        ax.set_yticks(self._yticks)
+      if self._yticklabels is not None:
+        ax.set_yticklabels(self._yticklabels)
 
     if self._ylabel_template:
       _set_ylabel(ax, self._get_ylabel(axis_index), self._ylabel_horizontal)
