@@ -145,6 +145,21 @@ $ pip install ./alphagenome
 See [the documentation](https://www.alphagenomedocs.com/installation.html) for
 information on alternative installation strategies.
 
+## Contributing
+
+We welcome bug fixes and some new features to this project. Before sending your
+pull request, please read the [CONTRIBUTING](CONTRIBUTING.md) documentation,
+ensure all tests pass, and that your contributions are formatted correctly.
+
+You can check your changes by running the following from the `alphagenome` root
+directory:
+
+```shell
+$ python3 -m pip install hatch
+$ python3 -m hatch run check:all  # Runs linter and formatter.
+$ python3 -m hatch test
+```
+
 ## Citing `alphagenome`
 
 If you use AlphaGenome in your research, please cite using:
