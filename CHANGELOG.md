@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0]
+
+### Added
+
+-   Support for making interval scoring requests with no center mask.
+-   Additional `Variant` properties for if the variant is an indel, has
+    frameshift or is a structured variant.
+-   Options to set y-axis bounds, ticks and tick labels.
+-   Support for processing splice sites from GTF.
+
+### Changed
+
+-   Reduce peak memory usage by 50% when unpacking tensors.
+-   Update citation to official Nature paper.
+
 ## [0.5.1]
 
 ### Changed
