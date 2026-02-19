@@ -15,8 +15,9 @@
 """Plotting functions."""
 
 from collections.abc import Callable, Mapping, Sequence
+import functools
 import math
-from typing import Any
+from typing import Any, Literal
 
 from absl import logging
 from alphagenome.data import genome
@@ -27,13 +28,56 @@ import pandas as pd
 import seaborn as sns
 
 
+@functools.lru_cache(maxsize=8)
+def _get_text_path(
+    letter: str, letter_colors_scheme: str
+) -> tuple[mpl.text.TextPath, str]:
+  """Returns a memoized TextPath and color for the given letter and scheme."""
+  letters_width_colors = dict(
+      # Consistent with `classic` scheme from
+      # https://github.com/gecrooks/weblogo/blob/master/weblogo/logo.py#L136
+      default={
+          'A': (0.35, 'darkgreen'),
+          'C': (0.366, 'blue'),
+          'G': (0.384, 'orange'),
+          'T': (0.305, 'red'),
+      },
+      # Consistent with factorbook scheme from https://www.factorbook.org/
+      factorbook={
+          'A': (0.305, 'red'),
+          'C': (0.366, 'blue'),
+          'G': (0.384, 'orange'),
+          'T': (0.35, 'darkgreen'),
+      },
+  )
+  if (
+      letters_width_color := letters_width_colors.get(letter_colors_scheme)
+  ) is None:
+    raise ValueError(
+        f'letter_colors_scheme must be one of {letters_width_colors.keys()}.'
+        f'Got "{letter_colors_scheme}".'
+    )
+  else:
+    if (letter_width_color := letters_width_color.get(letter)) is None:
+      raise ValueError(
+          f'letter must be one of {letters_width_color.keys()}. Got "{letter}".'
+      )
+    else:
+      letter_width, letter_color = letter_width_color
+      font = mpl.font_manager.FontProperties(weight='bold')
+      return (
+          mpl.text.TextPath((-letter_width, 0), letter, size=1, prop=font),
+          letter_color,
+      )
+
+
 def seqlogo(
     letter_heights: np.ndarray,
     alphabet: str = 'ACGT',
     one_based: bool = True,
     start: int = 0,
-    ax: mpl.axis.Axis | None = None,
-    letter_colors: str = 'default',
+    ax: mpl.axes.Axes | None = None,
+    letter_colors: Literal['default', 'factorbook'] = 'default',
 ):
   """Sequence logo plot.
 
@@ -52,7 +96,7 @@ def seqlogo(
       'factorbook', a scheme consistent with Factorbook
       (https://www.factorbook.org/).
   """
-  ax = ax or plt.gca()
+  ax = ax if ax is not None else plt.gca()
 
   if letter_heights.ndim != 2:
     raise ValueError(
@@ -61,10 +105,18 @@ def seqlogo(
   if letter_heights.shape[1] != len(alphabet):
     raise ValueError('Last axis needs to match len(alphabet)')
 
+  globscale = 1.35
+  paths = []
+  facecolors = []
+
   for x_offset, heights in enumerate(letter_heights):
     last_positive_y = 0.0
     last_negative_y = 0.0
+    x = start + x_offset + 0.5 + 0.5 * one_based
+
     for height, letter in sorted(zip(heights, alphabet)):
+      if height == 0:
+        continue
       # Start with lowest height and keep track of the last y coordinate.
       if height > 0:
         y_position = last_positive_y
@@ -72,63 +124,29 @@ def seqlogo(
       else:
         y_position = last_negative_y
         last_negative_y += height
-      _add_letter_to_axis(
-          ax,
-          letter,
-          x=start + x_offset + 0.5 + 0.5 * one_based,
-          y=y_position,
-          height=height,
-          letter_colors=letter_colors,
+
+      base_path, letter_color = _get_text_path(letter, letter_colors)
+
+      transform = (
+          mpl.transforms.Affine2D()
+          .scale(globscale, height * globscale)
+          .translate(x, y_position)
       )
+      paths.append(base_path.transformed(transform))
+      facecolors.append(letter_color)
+
+  if paths:
+    collection = mpl.collections.PathCollection(
+        paths,
+        facecolors=facecolors,
+        edgecolors='none',
+        linewidths=0,
+        transform=ax.transData,
+    )
+    ax.add_collection(collection)
 
   # Make sure all letters are displayed.
-  ax.autoscale_view()  # pytype: disable=attribute-error
-
-
-def _add_letter_to_axis(ax, letter, x, y, height=1, letter_colors='default'):
-  """Add a letter with unit width and stretched by height to the axis."""
-  globscale = 1.35
-  letter_width_colors = dict(
-      # Consistent with `classic` scheme from
-      # https://github.com/gecrooks/weblogo/blob/master/weblogo/logo.py#L136
-      default={
-          'A': (0.35, 'darkgreen'),
-          'C': (0.366, 'blue'),
-          'G': (0.384, 'orange'),
-          'T': (0.305, 'red'),
-      },
-      # Consistent with factorbook scheme from https://www.factorbook.org/
-      factorbook={
-          'A': (0.305, 'red'),
-          'C': (0.366, 'blue'),
-          'G': (0.384, 'orange'),
-          'T': (0.35, 'darkgreen'),
-      },
-  )
-  try:
-    letter_width_color = letter_width_colors[letter_colors]
-  except KeyError as e:
-    raise ValueError(
-        f'Letter_colors must be one of {letter_width_colors.keys()}.'
-    ) from e
-
-  font = mpl.font_manager.FontProperties(weight='bold')
-  letter_width, letter_color = letter_width_color[letter]
-
-  letter_transform = (
-      mpl.transforms.Affine2D()
-      .scale(globscale, height * globscale)
-      .translate(x, y)
-  )
-  p = mpl.patches.PathPatch(
-      mpl.text.TextPath((-letter_width, 0), letter, size=1, prop=font),
-      lw=0,
-      fc=letter_color,
-      transform=letter_transform
-      + ax.transData,  # pytype: disable=attribute-error
-  )
-  ax.add_patch(p)  # pytype: disable=attribute-error
-  return p
+  ax.autoscale_view()
 
 
 def plot_contact_map(
