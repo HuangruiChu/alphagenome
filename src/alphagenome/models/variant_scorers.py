@@ -18,6 +18,7 @@ from collections.abc import Sequence
 import dataclasses
 import enum
 import itertools
+import math
 from typing import TypeVar
 
 from alphagenome.models import dna_output
@@ -700,16 +701,18 @@ def tidy_anndata(
       'junction_Start',
       'junction_End',
   ]
-  if 'gene_id' in adata.obs and 'strand' in adata.obs:
+  if math.prod(adata.X.shape) == 0:
+    # Scores are empty, so we return an empty dataframe.
+    return pd.DataFrame()
+  elif 'gene_id' in adata.obs and 'strand' in adata.obs:
     # Scores are for a gene-based scorer.
     obs = adata.obs.rename({'strand': 'gene_strand'}, axis=1)
-    obs['gene_id'] = obs['gene_id'].str.split('.', expand=True)[0]  # Depatch.
+
+    # Remove patch number from gene_id.
+    obs['gene_id'] = obs['gene_id'].str.split('.', expand=True).get(0)
     for col in gene_columns:
       if col not in obs:
         obs[col] = None
-  elif adata.X.shape[0] == 0:
-    # Scores are empty, so we return an empty dataframe.
-    return pd.DataFrame()
   elif adata.X.shape[0] == 1 and adata.obs.empty:
     # Scores are for a non-gene-based scorer.
     obs = pd.DataFrame([[None] * len(gene_columns)], columns=gene_columns)

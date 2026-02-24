@@ -877,6 +877,13 @@ class TestTidyScores(absltest.TestCase):
         ],
     )
 
+  def test_tidy_anndata_empty(self):
+    adata = anndata.AnnData(
+        X=np.ones((0, 3)), obs=pd.DataFrame(columns=['gene_id', 'strand'])
+    )
+    result = variant_scorers.tidy_anndata(adata)
+    pd.testing.assert_frame_equal(result, pd.DataFrame())
+
   def test_tidy_lists_of_anndata(self):
     # List of AnnDatas.
     anndata_list = [self.adata_gene_centric, self.adata_variant_centric]
